@@ -11,8 +11,6 @@ env.bak/
 venv.bak/
 
 *.log
-
-config.yml
 *.ini
 *.cfg
 
@@ -30,7 +28,7 @@ desktop.ini
 *.swp
 *.swo
 
-_quickLogin
+*_quickLogin.bat
 
 pdf/
 stock/
