@@ -1,87 +1,95 @@
+
 from ncatbot.core import BotClient, GroupMessage, PrivateMessage
 from ncatbot.utils.config import config
 from ncatbot.utils.logger import get_log
 
 import jmcomic
+import os
+import shutil
 
 from ncatbot.core.element import (
-    MessageChain,  # 消息链，用于组合多个消息元素
-    Text,          # 文本消息
-    Reply,         # 回复消息
-    At,            # @某人
-    AtAll,         # @全体成员
-    Dice,          # 骰子
-    Face,          # QQ表情
-    Image,         # 图片
-    Json,          # JSON消息
-    Music,         # 音乐分享 (网易云, QQ 音乐等)
-    CustomMusic,   # 自定义音乐分享
-    Record,        # 语音
-    Rps,           # 猜拳
-    Video,         # 视频
-    File,          # 文件
+    MessageChain,
+    Text,
+    Reply,
+    At,
+    AtAll,
+    Dice,
+    Face,
+    Image,
+    Json,
+    Music,
+    CustomMusic,
+    Record,
+    Rps,
+    Video,
+    File,
 )
 
 _log = get_log()
 
-config.set_bot_uin("")  # 设置 bot qq 号 (必填)
-config.set_root("")  # 设置 bot 超级管理员账号 (建议填写)
-config.set_ws_uri("ws://localhost:3001")  # 设置 napcat websocket server 地址
-config.set_token("")  # 设置 token (napcat 服务器的 token)
+config.set_bot_uin("1412633232")
+config.set_root("1224403167")
+config.set_ws_uri("ws://localhost:3001")
+config.set_token("napcat")
 
 bot = BotClient()
 
 config = "config.yml"
 loadConfig = jmcomic.JmOption.from_file(config)
-#如果需要下载，则取消以下注释
 manhua = []
+
+def clean_up_files(file_path):
+    # 删除 pdf 文件
+    try:
+        os.remove(file_path)
+        _log.info(f"已删除文件: {file_path}")
+    except Exception as e:
+        _log.error(f"删除文件失败: {file_path}, 原因: {e}")
+
+    # 清空 stock 文件夹
+    stock_dir = "stock"
+    if os.path.exists(stock_dir):
+        try:
+            shutil.rmtree(stock_dir)
+            _log.info(f"已清空文件夹: {stock_dir}")
+        except Exception as e:
+            _log.error(f"清空文件夹失败: {stock_dir}, 原因: {e}")
 
 @bot.group_event()
 async def on_group_message(msg: GroupMessage):
     _log.info(msg)
-    # 清空 manhua
     manhua.clear()
     if msg.raw_message.startswith("/jm "):
-        # Extract the numeric part after "/jm "
         album_id = msg.raw_message.split("/jm ", 1)[1].strip()
         manhua.append(album_id)
 
-        # Download the album
         loadConfig.download_album(manhua)
-
-        # Construct the file path for the downloaded PDF
         file_path = f"pdf/{album_id}.pdf"
 
-        # Send the file as a message
         msg_chain = MessageChain([
-            File(file_path)
+            File(file_path).to_dict()
         ])
-        
-        await msg.reply(rtf=msg_chain)
 
+        await msg.reply(rtf=msg_chain)
+        clean_up_files(file_path)
 
 @bot.private_event()
 async def on_private_message(msg: PrivateMessage):
     _log.info(msg)
-    # 清空 manhua
     manhua.clear()
     if msg.raw_message.startswith("/jm "):
-        # Extract the numeric part after "/jm "
         album_id = msg.raw_message.split("/jm ", 1)[1].strip()
         manhua.append(album_id)
 
-        # Download the album
         loadConfig.download_album(manhua)
-
-        # Construct the file path for the downloaded PDF
         file_path = f"pdf/{album_id}.pdf"
 
-        # Send the file as a message
         msg_chain = MessageChain([
-            File(file_path)
+            File(file_path).to_dict()
         ])
-        await bot.api.post_private_msg(msg.user_id, rtf=msg_chain)
 
+        await bot.api.post_private_msg(msg.user_id, rtf=msg_chain)
+        clean_up_files(file_path)
 
 if __name__ == "__main__":
     bot.run(reload=False)
